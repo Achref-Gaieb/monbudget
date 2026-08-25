@@ -57,6 +57,12 @@ interface BudgetState extends PersistedData {
 
   setMethod: (method: MethodId) => void;
   setCustomSplit: (percentages: number[]) => void;
+  /** Pins a category to a euro amount; the share is derived from the income. */
+  setCategoryAmount: (id: string, amount: number) => void;
+  /** Sets a share and releases any pinned amount. */
+  setCategoryPercentage: (id: string, percentage: number) => void;
+  unpinCategory: (id: string) => void;
+  distributeRemainder: () => void;
   addCategory: (cat: Omit<Category, "id">) => void;
   updateCategory: (id: string, patch: Partial<Omit<Category, "id">>) => void;
   removeCategory: (id: string) => void;
@@ -146,6 +152,28 @@ function buildProfileData(template: BudgetTemplate | null): ProfileData {
   };
 }
 
+function monthIncome(m: MonthBudget): number {
+  return m.incomes.reduce((sum, i) => sum + i.amount, 0);
+}
+
+/**
+ * Keeps pinned categories worth what the user pinned them at. Percentages
+ * stay the source of truth for every calculation, so this simply refreshes
+ * them after the income moves.
+ */
+function reconcileFixedAmounts(m: MonthBudget): MonthBudget {
+  const income = monthIncome(m);
+  if (income <= 0) return m;
+  return {
+    ...m,
+    categories: m.categories.map((c) =>
+      c.fixedAmount === undefined
+        ? c
+        : { ...c, percentage: Math.min(100, (c.fixedAmount / income) * 100) }
+    ),
+  };
+}
+
 /** Immutably patch the current month. */
 function patchMonth(
   state: Pick<BudgetState, "months" | "currentMonth">,
@@ -196,26 +224,34 @@ export const useBudgetStore = create<BudgetState>()(
         });
       },
 
+      // Income changes re-derive the share of every pinned category, so a
+      // "1 000 € of savings" stays 1 000 € when the salary moves.
       addIncome: (income) =>
         set((s) =>
-          patchMonth(s, (m) => ({
-            ...m,
-            incomes: [...m.incomes, { ...income, id: uid() }],
-          }))
+          patchMonth(s, (m) =>
+            reconcileFixedAmounts({
+              ...m,
+              incomes: [...m.incomes, { ...income, id: uid() }],
+            })
+          )
         ),
       updateIncome: (id, patch) =>
         set((s) =>
-          patchMonth(s, (m) => ({
-            ...m,
-            incomes: m.incomes.map((i) => (i.id === id ? { ...i, ...patch } : i)),
-          }))
+          patchMonth(s, (m) =>
+            reconcileFixedAmounts({
+              ...m,
+              incomes: m.incomes.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+            })
+          )
         ),
       removeIncome: (id) =>
         set((s) =>
-          patchMonth(s, (m) => ({
-            ...m,
-            incomes: m.incomes.filter((i) => i.id !== id),
-          }))
+          patchMonth(s, (m) =>
+            reconcileFixedAmounts({
+              ...m,
+              incomes: m.incomes.filter((i) => i.id !== id),
+            })
+          )
         ),
 
       setMethod: (method) =>
@@ -223,9 +259,11 @@ export const useBudgetStore = create<BudgetState>()(
           patchMonth(s, (m) => {
             const preset = METHOD_PRESETS.find((p) => p.id === method);
             if (!preset) return { ...m, method };
+            // A preset is a choice of shares, so it releases pinned amounts.
             const categories = m.categories.map((c, i) => ({
               ...c,
               percentage: i < 3 ? preset.split[i] : 0,
+              fixedAmount: undefined,
             }));
             return { ...m, method, categories };
           })
@@ -239,8 +277,87 @@ export const useBudgetStore = create<BudgetState>()(
             categories: m.categories.map((c, i) => ({
               ...c,
               percentage: percentages[i] ?? c.percentage,
+              fixedAmount: undefined,
             })),
           }))
+        ),
+
+      setCategoryAmount: (id, amount) =>
+        set((s) =>
+          patchMonth(s, (m) => {
+            const income = monthIncome(m);
+            return {
+              ...m,
+              method: "custom",
+              categories: m.categories.map((c) =>
+                c.id === id
+                  ? {
+                      ...c,
+                      fixedAmount: amount,
+                      percentage:
+                        income > 0 ? Math.min(100, (amount / income) * 100) : c.percentage,
+                    }
+                  : c
+              ),
+            };
+          })
+        ),
+
+      setCategoryPercentage: (id, percentage) =>
+        set((s) =>
+          patchMonth(s, (m) => ({
+            ...m,
+            method: "custom",
+            categories: m.categories.map((c) =>
+              // Choosing a share un-pins the amount: the share is now what
+              // the user wants kept.
+              c.id === id
+                ? { ...c, percentage, fixedAmount: undefined }
+                : c
+            ),
+          }))
+        ),
+
+      unpinCategory: (id) =>
+        set((s) =>
+          patchMonth(s, (m) => ({
+            ...m,
+            categories: m.categories.map((c) =>
+              c.id === id ? { ...c, fixedAmount: undefined } : c
+            ),
+          }))
+        ),
+
+      /**
+       * Hands whatever is left of the income to the categories that are not
+       * pinned, keeping the proportions they already have between them.
+       */
+      distributeRemainder: () =>
+        set((s) =>
+          patchMonth(s, (m) => {
+            const flexible = m.categories.filter((c) => c.fixedAmount === undefined);
+            if (flexible.length === 0) return m;
+            const pinnedPct = m.categories
+              .filter((c) => c.fixedAmount !== undefined)
+              .reduce((sum, c) => sum + c.percentage, 0);
+            const share = Math.max(0, 100 - pinnedPct);
+            const flexTotal = flexible.reduce((sum, c) => sum + c.percentage, 0);
+            return {
+              ...m,
+              method: "custom",
+              categories: m.categories.map((c) =>
+                c.fixedAmount !== undefined
+                  ? c
+                  : {
+                      ...c,
+                      percentage:
+                        flexTotal > 0
+                          ? share * (c.percentage / flexTotal)
+                          : share / flexible.length,
+                    }
+              ),
+            };
+          })
         ),
 
       addCategory: (cat) =>

@@ -155,6 +155,7 @@ lib/
   calculations.ts       # Statistiques, prévisions, agrégats
   insights.ts           # Moteur de recommandations et d'anomalies
   score.ts              # Score budgétaire expliqué
+  goals.ts              # Progression, jalons, lien épargne ↔ objectifs
   achievements.ts       # Succès (gamification)
   features.ts           # Feature flags Free / Premium
   templates.ts          # Modèles de budgets
@@ -191,11 +192,14 @@ Le code est organisé pour absorber les étapes suivantes sans réécriture :
 - **`lib/features.ts`** — un seul fichier décide de ce qui est Free ou Premium
 - **`lib/assistant.ts`** — les interfaces et le contexte structuré de l'assistant IA sont prêts, il ne reste qu'à brancher un fournisseur
 - **`lib/tokens.ts` + variables CSS** — aucune couleur d'interface codée en dur, les deux thèmes suivent automatiquement
+- **Dépense ou transfert** — chaque mouvement porte un `kind` (`expense` | `transfer`) et un `destinationId`. Aujourd'hui tout vaut `expense`, donc les chiffres sont inchangés ; le jour où un virement vers un ETF doit cesser d'être compté comme une consommation, c'est une donnée à basculer, pas un modèle à refaire
+- **Objectifs génériques** — `nom + cible + actuel + contribution`, avec un `type` extensible (`saving`, `debt`, et `investment` déjà réservé)
 
 ## Roadmap
 
 - [x] **v1.0.0** — budget 50/30/20 personnalisable, dashboard, prévisions, insights, score, simulateur, profils, objectifs, exports, thèmes clair/sombre
-- [x] **v2.0.0** — refonte de l'expérience quotidienne : ajout d'une dépense en deux gestes, accueil compris en 3 secondes, navigation à 5 entrées, répartition en euros, onboarding en une question
+- [x] **v2.0.0** — refonte de l'expérience quotidienne : ajout d'une dépense en deux gestes, accueil compris en 3 secondes, navigation à 5 entrées, onboarding en une question
+- [x] **v2.1.0** — répartition en € ou en %, montants épinglés, objectifs épargne/dette avec jalons, lien épargne ↔ objectifs
 - [ ] **v2.1.0** — authentification utilisateur (comptes et sessions)
 - [ ] **v2.2.0** — base de données cloud et sauvegarde distante
 - [ ] **v2.3.0** — synchronisation multi-appareils

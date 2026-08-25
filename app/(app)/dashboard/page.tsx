@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AlertsBanner } from "@/components/alerts-banner";
 import { AnimatedNumber } from "@/components/animated-number";
+import { AppIcon } from "@/components/app-icon";
 import { CategoryProgress } from "@/components/category-progress";
 import { EmptyState } from "@/components/empty-state";
 import { QuickExpense } from "@/components/quick-expense";
@@ -15,7 +16,8 @@ import {
   totalIncome,
   totalSpent,
 } from "@/lib/calculations";
-import { COLOR } from "@/lib/tokens";
+import { goalProgress } from "@/lib/goals";
+import { COLOR, softBg } from "@/lib/tokens";
 import { useBudgetStore, useCurrentMonth } from "@/lib/store";
 import { useI18n } from "@/lib/use-i18n";
 
@@ -27,8 +29,19 @@ import { useI18n } from "@/lib/use-i18n";
 export default function DashboardPage() {
   const { t, fmt, fmtMonth } = useI18n();
   const month = useCurrentMonth();
+  const goals = useBudgetStore((s) => s.goals);
   const userName = useBudgetStore((s) => s.settings.userName);
   const [addOpen, setAddOpen] = useState(false);
+
+  // Two at most: the least advanced ones, where attention is worth something.
+  const topGoals = useMemo(
+    () =>
+      [...goals]
+        .filter((g) => g.target > 0 && !goalProgress(g).reached)
+        .sort((a, b) => goalProgress(b).percent - goalProgress(a).percent)
+        .slice(0, 2),
+    [goals]
+  );
 
   const stats = useMemo(() => categoryStats(month), [month]);
   const income = totalIncome(month);
@@ -140,6 +153,65 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {/* Goals, deliberately capped at two lines so the screen stays readable */}
+      {topGoals.length > 0 && (
+        <section aria-labelledby="goals-title">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 id="goals-title" className="text-sm font-semibold">
+              {t("goals.title")}
+            </h2>
+            <Link
+              href="/objectifs"
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              {t("dash.seeGoals")}
+            </Link>
+          </div>
+          <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
+            {topGoals.map((goal) => {
+              const { percent } = goalProgress(goal);
+              return (
+                <li key={goal.id} className="flex items-center gap-3 px-4 py-3">
+                  <span
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: softBg(goal.color), color: goal.color }}
+                  >
+                    <AppIcon name={goal.icon} className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{goal.name}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {fmt(goal.saved)} / {fmt(goal.target)}
+                    </p>
+                  </div>
+                  <div className="w-20 shrink-0">
+                    <div
+                      className="h-1.5 overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-valuenow={Math.round(percent)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={goal.name}
+                    >
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: goal.color }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percent}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+                  <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums">
+                    {Math.round(percent)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Level 3 — the door to everything else */}
       <div className="flex flex-wrap gap-2">

@@ -9,6 +9,40 @@ et le projet respecte le [versionnage sémantique](https://semver.org/lang/fr/) 
 - **MINOR** (`v1.1.0`) — nouvelle fonctionnalité rétrocompatible
 - **PATCH** (`v1.0.1`) — correction de bug rétrocompatible
 
+## [2.1.0] — 2026-08-25
+
+Optimisation ciblée : répartir en euros comme on y pense, et donner du sens
+à l'épargne en la reliant aux objectifs. Aucun écran ajouté.
+
+### Ajouté
+
+- **Répartition en euros ou en pourcentage** — les deux champs sont côte à côte et éditables ; celui que l'on modifie devient l'épinglé (📌). Un montant épinglé ne bouge plus quand le revenu change : c'est sa part qui est recalculée. À l'inverse, une catégorie laissée libre garde sa part et voit son montant suivre le revenu
+- **Répartir le reste** — annonce les montants avant d'agir, puis distribue proportionnellement entre les catégories non épinglées
+- **Objectifs de type dette**, avec les libellés adaptés (« remboursé », « reste à rembourser »)
+- **Jalons 25 / 50 / 75 / 100 %** en points sobres sous la barre de progression
+- **Contribution en un tap** sur le montant mensuel prévu, avec retour immédiat : « 🎯 1 % · d'ici décembre 2034 »
+- **Lien épargne ↔ objectifs** — « Épargne mensuelle 1 000 € · affectée 850 € · 150 € non affectés ». Une information, jamais une erreur bloquante
+- **Date cible facultative** sur un objectif
+- **Bande d'objectifs sur l'accueil**, limitée à deux lignes pour préserver la lecture en trois secondes
+- **Modèle « Budget détaillé »** à 9 postes concrets (loyer, courses, transport…), entièrement modifiable
+
+### Modifié
+
+- Création d'un objectif ramenée à **3 champs** (nom, cible, contribution) ; type, montant déjà atteint, date, icône et couleur sont repliés
+- La page Objectifs abandonne le graphique de projection au profit de la ligne de rapprochement avec le budget
+- Les messages de répartition s'expriment en euros plutôt qu'en pourcentages
+
+### Fondations (préparées, non développées)
+
+Le futur module Investissements pourra arriver sans migration :
+
+- `Expense.kind` (`expense` | `transfer`) distingue l'argent **consommé** de l'argent **déplacé** vers un actif. Tout vaut `expense` par défaut, donc aucun chiffre actuel ne change
+- `Expense.destinationId` et `Expense.currency` réservés pour les positions et les actifs libellés en devise
+- `Goal.type` accepte déjà `investment` ; les objectifs restent génériques — nom, cible, montant actuel, contribution
+
+Aucun écran, aucune entrée de navigation et aucune information d'investissement
+n'a été ajoutée : le cœur du produit reste le budget mensuel.
+
 ## [2.0.0] — 2026-08-25
 
 Refonte de l'expérience autour de l'usage quotidien. Priorité donnée au
@@ -80,5 +114,6 @@ Première version publique.
 
 - Les compteurs animés pouvaient rester figés sur une valeur périmée : écrire `textContent` dans un nœud dont React gérait les enfants détachait le nœud texte suivi par React. Le composant possède désormais son contenu et se stabilise même lorsque les animations sont suspendues (onglet en arrière-plan).
 
+[2.1.0]: https://github.com/Achref-Gaieb/monbudget/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Achref-Gaieb/monbudget/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Achref-Gaieb/monbudget/releases/tag/v1.0.0

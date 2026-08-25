@@ -31,8 +31,35 @@ const savings = (name: string, percentage: number): Omit<Category, "id"> => ({
   isSavings: true,
 });
 
-/** Ready-to-use budget models — fully editable after creation. */
+/**
+ * Ready-to-use budget models — suggestions, never a structure. Every category
+ * can be renamed, recoloured, reordered, deleted or added to afterwards.
+ */
 export const BUDGET_TEMPLATES: BudgetTemplate[] = [
+  {
+    id: "detailed",
+    icon: "list-checks",
+    titleKey: "tpl.detailed",
+    descKey: "tpl.detailedDesc",
+    method: "custom",
+    categories: [
+      { name: "Loyer", percentage: 28, color: "#6366f1", icon: "home" },
+      { name: "Charges", percentage: 7, color: "#3b82f6", icon: "zap" },
+      { name: "Abonnements", percentage: 4, color: "#06b6d4", icon: "wifi" },
+      { name: "Charges familiales", percentage: 6, color: "#8b5cf6", icon: "baby" },
+      { name: "Courses", percentage: 12, color: "#14b8a6", icon: "shopping-cart" },
+      { name: "Transport", percentage: 8, color: "#84cc16", icon: "car" },
+      { name: "Restaurants", percentage: 8, color: "#ec4899", icon: "utensils" },
+      { name: "Loisirs", percentage: 7, color: "#f43f5e", icon: "gamepad-2" },
+      {
+        name: "Épargne",
+        percentage: 20,
+        color: "#10b981",
+        icon: "piggy-bank",
+        isSavings: true,
+      },
+    ],
+  },
   {
     id: "student",
     icon: "graduation-cap",

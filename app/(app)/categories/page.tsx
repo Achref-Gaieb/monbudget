@@ -1,7 +1,17 @@
 "use client";
 
 import { motion, Reorder, useDragControls } from "framer-motion";
-import { Check, FolderKanban, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  Check,
+  FolderKanban,
+  GripVertical,
+  Pencil,
+  Pin,
+  Plus,
+  Trash2,
+  Wand2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppIcon } from "@/components/app-icon";
@@ -48,10 +58,13 @@ function CategoryRow({
   onDelete: () => void;
 }) {
   const { t, fmt } = useI18n();
-  const updateCategory = useBudgetStore((s) => s.updateCategory);
+  const setCategoryAmount = useBudgetStore((s) => s.setCategoryAmount);
+  const setCategoryPercentage = useBudgetStore((s) => s.setCategoryPercentage);
+  const unpinCategory = useBudgetStore((s) => s.unpinCategory);
   const controls = useDragControls();
   const { category, allowed, spent, remaining, usage, expenseCount, forecast, forecastGap } =
     stat;
+  const isPinned = category.fixedAmount !== undefined;
   const barColor = usageColor(usage, category.color);
   const usageLabel = Number.isFinite(usage) ? `${Math.round(usage)}%` : "∞";
 
@@ -108,52 +121,65 @@ function CategoryRow({
                 {t("cats.expensesCount", { n: expenseCount })}
               </p>
             </div>
-            {/* People budget in euros, not in percentages — so that is what
-                they type. The share is derived and shown as a hint. */}
-            {income > 0 ? (
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    step={10}
-                    value={Math.round(allowed)}
-                    onChange={(e) => {
-                      const amount = Math.max(0, Number(e.target.value) || 0);
-                      updateCategory(category.id, {
-                        percentage: Math.min(100, (amount / income) * 100),
-                      });
-                    }}
-                    className="h-11 w-28 pr-7 text-right tabular-nums"
-                    aria-label={`${category.name} — ${t("cats.budget")}`}
-                  />
-                  <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                    €
-                  </span>
-                </div>
-                <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">
-                  {Math.round(category.percentage)}%
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1">
+            {/* Euros and share side by side, both editable. Whichever the
+                user types becomes the pinned one — no mode to choose. */}
+            <div className="flex items-center gap-1.5">
+              <div className="relative">
                 <Input
                   type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step={10}
+                  value={Math.round(allowed)}
+                  disabled={income <= 0}
+                  onChange={(e) =>
+                    setCategoryAmount(
+                      category.id,
+                      Math.max(0, Number(e.target.value) || 0)
+                    )
+                  }
+                  className="h-11 w-24 pr-6 text-right tabular-nums"
+                  aria-label={`${category.name} — ${t("cats.budget")}`}
+                />
+                <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-sm text-muted-foreground">
+                  €
+                </span>
+              </div>
+
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="decimal"
                   min={0}
                   max={100}
                   value={Math.round(category.percentage)}
                   onChange={(e) =>
-                    updateCategory(category.id, {
-                      percentage: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                    })
+                    setCategoryPercentage(
+                      category.id,
+                      Math.max(0, Math.min(100, Number(e.target.value) || 0))
+                    )
                   }
-                  className="h-11 w-16 text-right"
+                  className="h-11 w-16 pr-5 text-right tabular-nums"
                   aria-label={`${category.name} — ${t("cats.percentage")}`}
                 />
-                <span className="text-sm text-muted-foreground">%</span>
+                <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-sm text-muted-foreground">
+                  %
+                </span>
               </div>
-            )}
+
+              {/* Only shown once pinned, so it reads as a state, not a control */}
+              {isPinned && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => unpinCategory(category.id)}
+                  aria-label={t("cats.unpin")}
+                  title={t("cats.pinnedHint")}
+                >
+                  <Pin className="size-4 text-primary" aria-hidden />
+                </Button>
+              )}
+            </div>
             <div className="flex gap-1">
               <Button
                 variant="ghost"
@@ -222,9 +248,10 @@ function CategoryRow({
 }
 
 export default function CategoriesPage() {
-  const { t, fmt } = useI18n();
+  const { t, fmt, fmtAuto } = useI18n();
   const month = useCurrentMonth();
   const setMethod = useBudgetStore((s) => s.setMethod);
+  const distributeRemainder = useBudgetStore((s) => s.distributeRemainder);
   const addCategory = useBudgetStore((s) => s.addCategory);
   const updateCategory = useBudgetStore((s) => s.updateCategory);
   const removeCategory = useBudgetStore((s) => s.removeCategory);
@@ -270,6 +297,29 @@ export default function CategoriesPage() {
   // Tolerant of the rounding introduced by entering euros rather than shares.
   const pctValid = Math.abs(pctTotal - 100) < 0.5;
   const unallocated = income * ((100 - pctTotal) / 100);
+
+  // Preview of what "share out the rest" would give, computed the same way
+  // the store does it: proportionally, among the categories left free.
+  const flexible = month.categories.filter((c) => c.fixedAmount === undefined);
+  const pinnedPct = month.categories
+    .filter((c) => c.fixedAmount !== undefined)
+    .reduce((s, c) => s + c.percentage, 0);
+  const flexTotal = flexible.reduce((s, c) => s + c.percentage, 0);
+  const freeShare = Math.max(0, 100 - pinnedPct);
+  const canDistribute = !pctValid && income > 0 && flexible.length > 0;
+  const distributionPreview = canDistribute
+    ? flexible.map((c) => ({
+        id: c.id,
+        name: c.name,
+        color: c.color,
+        amount:
+          (income *
+            (flexTotal > 0
+              ? freeShare * (c.percentage / flexTotal)
+              : freeShare / flexible.length)) /
+          100,
+      }))
+    : [];
 
   const submit = () => {
     const pct = Number(percentage);
@@ -384,6 +434,44 @@ export default function CategoriesPage() {
                 </>
               )}
             </p>
+
+            {/* Says what it will do before doing it, then does the maths */}
+            {canDistribute && (
+              <div className="mt-3 rounded-xl border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">
+                  {t("cats.distributePreview")}
+                </p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {distributionPreview.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <span
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: p.color }}
+                        aria-hidden
+                      />
+                      <span className="truncate text-muted-foreground">{p.name}</span>
+                      <span className="ml-auto font-medium tabular-nums">
+                        {fmtAuto(p.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  size="sm"
+                  className="mt-3 h-10 w-full gap-2 sm:w-auto"
+                  onClick={() => {
+                    distributeRemainder();
+                    toast.success(t("cats.distributed"));
+                  }}
+                >
+                  <Wand2 className="size-4" aria-hidden />
+                  {t("cats.distribute")}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

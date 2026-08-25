@@ -3,32 +3,21 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarClock,
+  ChevronDown,
+  CreditCard,
   Pencil,
   PiggyBank,
   Plus,
   Target,
   Trash2,
-  TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { AnimatedNumber } from "@/components/animated-number";
 import { AppIcon } from "@/components/app-icon";
-import { AXIS_TICK, CHART_TOOLTIP_STYLE, ChartCard } from "@/components/charts/chart-card";
 import { ColorPicker } from "@/components/color-picker";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EmptyState } from "@/components/empty-state";
 import { IconPicker } from "@/components/icon-picker";
-import { MiniStat } from "@/components/mini-stat";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,11 +31,41 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { localeOf } from "@/lib/format";
+import { goalKind, goalProgress, MILESTONES, savingsPlan } from "@/lib/goals";
 import { PALETTE } from "@/lib/presets";
+import { useBudgetStore, useCurrentMonth } from "@/lib/store";
 import { COLOR, softBg } from "@/lib/tokens";
-import { useBudgetStore } from "@/lib/store";
-import type { Goal } from "@/lib/types";
+import type { Goal, GoalKind } from "@/lib/types";
 import { useI18n } from "@/lib/use-i18n";
+import { cn } from "@/lib/utils";
+
+/** Four dots on the bar. Enough to feel progress, not enough to feel like a game. */
+function Milestones({ percent, color }: { percent: number; color: string }) {
+  return (
+    <div className="mt-2 flex items-center justify-between">
+      {MILESTONES.map((m) => {
+        const passed = percent >= m;
+        return (
+          <span
+            key={m}
+            className={cn(
+              "flex items-center gap-1 text-[11px] tabular-nums transition-colors",
+              passed ? "font-semibold" : "text-muted-foreground"
+            )}
+            style={passed ? { color } : undefined}
+          >
+            <span
+              className="size-1.5 rounded-full"
+              style={{ backgroundColor: passed ? color : "var(--muted-foreground)" }}
+              aria-hidden
+            />
+            {m === 100 ? "🎉" : `${m}%`}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function GoalCard({
   goal,
@@ -61,14 +80,13 @@ function GoalCard({
   onDelete: () => void;
   onContribute: () => void;
 }) {
-  const { t, fmt, language } = useI18n();
-  const progress = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
-  const remaining = Math.max(0, goal.target - goal.saved);
-  const reached = remaining === 0;
-  const monthsLeft =
-    goal.monthly > 0 ? Math.ceil(remaining / goal.monthly) : null;
+  const { t, fmt, fmtAuto, language } = useI18n();
+  const contributeToGoal = useBudgetStore((s) => s.contributeToGoal);
+  const { kind, percent, remaining, reached, monthsLeft } = goalProgress(goal);
+  const isDebt = kind === "debt";
+
   const eta =
-    monthsLeft !== null && !reached
+    monthsLeft !== null
       ? new Date(
           new Date().getFullYear(),
           new Date().getMonth() + monthsLeft,
@@ -76,17 +94,26 @@ function GoalCard({
         ).toLocaleDateString(localeOf(language), { month: "long", year: "numeric" })
       : null;
 
+  /** One tap contributes the planned monthly amount — the common case. */
+  const quickContribute = () => {
+    contributeToGoal(goal.id, Math.min(goal.monthly, remaining));
+    const after = Math.min(goal.target, goal.saved + goal.monthly);
+    const pct = goal.target > 0 ? Math.round((after / goal.target) * 100) : 0;
+    toast.success(`${goal.name} · ${fmtAuto(after)}`, {
+      description: `🎯 ${pct}%${eta ? ` · ${t("goals.byDate", { date: eta })}` : ""}`,
+    });
+  };
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ delay: index * 0.06 }}
-      whileHover={{ y: -3 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
     >
-      <Card className="h-full transition-shadow hover:shadow-lg">
-        <CardContent className="flex h-full flex-col gap-4">
+      <Card className="h-full">
+        <CardContent className="flex h-full flex-col gap-3.5">
           <div className="flex items-center gap-3">
             <span
               className="flex size-11 shrink-0 items-center justify-center rounded-xl"
@@ -95,19 +122,24 @@ function GoalCard({
               <AppIcon name={goal.icon} className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{goal.name}</p>
+              <p className="flex items-center gap-1.5 truncate font-semibold">
+                {goal.name}
+                {isDebt && (
+                  <CreditCard
+                    className="size-3.5 shrink-0 text-muted-foreground"
+                    aria-label={t("goals.debt")}
+                  />
+                )}
+              </p>
               <p className="text-sm text-muted-foreground tabular-nums">
-                <AnimatedNumber value={goal.saved} format={(v) => fmt(v)} />{" "}
-                {t("common.of")} {fmt(goal.target)}
+                <AnimatedNumber value={goal.saved} format={(v) => fmt(v)} />
+                {" / "}
+                {fmt(goal.target)}
+                {isDebt ? ` ${t("goals.repaid")}` : ""}
               </p>
             </div>
-            <div className="flex gap-0.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t("common.edit")}
-                onClick={onEdit}
-              >
+            <div className="flex shrink-0 gap-0.5">
+              <Button variant="ghost" size="icon" aria-label={t("common.edit")} onClick={onEdit}>
                 <Pencil className="size-4" />
               </Button>
               <Button
@@ -122,16 +154,10 @@ function GoalCard({
           </div>
 
           <div>
-            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-              <span>{t("goals.progress")}</span>
-              <span className="font-semibold" style={{ color: goal.color }}>
-                {Math.round(progress)}%
-              </span>
-            </div>
             <div
               className="h-2.5 overflow-hidden rounded-full bg-muted"
               role="progressbar"
-              aria-valuenow={Math.round(progress)}
+              aria-valuenow={Math.round(percent)}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label={goal.name}
@@ -140,41 +166,54 @@ function GoalCard({
                 className="h-full rounded-full"
                 style={{ backgroundColor: goal.color }}
                 initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.9, ease: "easeOut" }}
+                animate={{ width: `${percent}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
               />
             </div>
+            <Milestones percent={percent} color={goal.color} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg bg-muted/50 px-3 py-2">
-              <p className="text-xs text-muted-foreground">{t("goals.remaining")}</p>
-              <p className="font-bold tabular-nums">{fmt(remaining)}</p>
-            </div>
-            <div className="rounded-lg bg-muted/50 px-3 py-2">
-              <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarClock className="size-3" aria-hidden />
-                {t("goals.estimate")}
-              </p>
-              <p className="truncate font-bold">
-                {reached
-                  ? t("goals.reached")
-                  : monthsLeft !== null
-                    ? `${t("goals.months", { n: monthsLeft })}${eta ? ` · ${eta}` : ""}`
-                    : "—"}
-              </p>
-            </div>
-          </div>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-semibold tabular-nums">
+              {Math.round(percent)}%
+            </span>
+            <span className="text-muted-foreground">
+              {isDebt ? t("goals.debtRemaining") : t("goals.remaining")} :{" "}
+              <span className="font-medium text-foreground tabular-nums">
+                {fmt(remaining)}
+              </span>
+            </span>
+            {eta && !reached && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <CalendarClock className="size-3.5" aria-hidden />
+                {eta}
+              </span>
+            )}
+          </p>
 
-          {!reached && (
-            <Button
-              variant="outline"
-              className="mt-auto gap-2"
-              onClick={onContribute}
+          {reached ? (
+            <p
+              className="mt-auto text-sm font-medium"
+              style={{ color: COLOR.positive }}
             >
-              <TrendingUp className="size-4" aria-hidden />
-              {t("goals.addContribution")}
-            </Button>
+              {t("goals.reached")}
+            </p>
+          ) : (
+            <div className="mt-auto flex flex-wrap gap-2">
+              {goal.monthly > 0 && (
+                <Button className="h-11 flex-1 gap-2" onClick={quickContribute}>
+                  <Plus className="size-4" aria-hidden />
+                  {t("goals.quickAdd", { amount: fmtAuto(goal.monthly) })}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className={cn("h-11 gap-2", goal.monthly <= 0 && "flex-1")}
+                onClick={onContribute}
+              >
+                {goal.monthly > 0 ? t("goals.otherAmount") : t("goals.addContribution")}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -183,8 +222,9 @@ function GoalCard({
 }
 
 export default function GoalsPage() {
-  const { t, fmt, language } = useI18n();
+  const { t, fmt, fmtAuto } = useI18n();
   const goals = useBudgetStore((s) => s.goals);
+  const month = useCurrentMonth();
   const addGoal = useBudgetStore((s) => s.addGoal);
   const updateGoal = useBudgetStore((s) => s.updateGoal);
   const removeGoal = useBudgetStore((s) => s.removeGoal);
@@ -196,57 +236,46 @@ export default function GoalsPage() {
   const [contributing, setContributing] = useState<Goal | null>(null);
   const [contribution, setContribution] = useState("");
 
+  // Three fields up front; the rest is folded away.
+  const [showMore, setShowMore] = useState(false);
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
-  const [saved, setSaved] = useState("0");
   const [monthly, setMonthly] = useState("");
+  const [saved, setSaved] = useState("0");
+  const [kind, setKind] = useState<GoalKind>("saving");
   const [color, setColor] = useState(PALETTE[8]);
   const [icon, setIcon] = useState("target");
+  const [targetDate, setTargetDate] = useState("");
   const [error, setError] = useState("");
 
-  // Reset the form fields when the dialog opens (event-driven, not an effect).
+  const plan = useMemo(() => savingsPlan(month, goals), [month, goals]);
+
   const openDialog = (goal: Goal | null) => {
     setEditing(goal);
     setName(goal?.name ?? "");
     setTarget(goal ? String(goal.target) : "");
-    setSaved(goal ? String(goal.saved) : "0");
     setMonthly(goal ? String(goal.monthly) : "");
+    setSaved(goal ? String(goal.saved) : "0");
+    setKind(goal ? goalKind(goal) : "saving");
     setColor(goal?.color ?? PALETTE[8]);
-    setIcon(goal?.icon ?? "piggy-bank");
+    setIcon(goal?.icon ?? "target");
+    setTargetDate(goal?.targetDate ?? "");
+    setShowMore(false);
     setError("");
     setDialogOpen(true);
   };
 
-  const totalSaved = goals.reduce((s, g) => s + g.saved, 0);
-  const monthlyPlanned = goals.reduce(
-    (s, g) => s + (g.saved >= g.target ? 0 : g.monthly),
-    0
-  );
-  const projectionData = useMemo(() => {
-    const points = [];
-    const start = new Date();
-    for (let i = 0; i <= 12; i++) {
-      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-      points.push({
-        label: d.toLocaleDateString(localeOf(language), { month: "short" }),
-        saved: Math.round(totalSaved + monthlyPlanned * i),
-      });
-    }
-    return points;
-  }, [totalSaved, monthlyPlanned, language]);
-
   const submit = () => {
     const targetN = Number(target.replace(",", "."));
-    const savedN = Number(saved.replace(",", ".")) || 0;
-    const monthlyN = Number(monthly.replace(",", ".")) || 0;
     if (!name.trim()) return setError(t("common.required"));
-    if (Number.isNaN(targetN) || targetN <= 0)
-      return setError(t("common.positive"));
+    if (Number.isNaN(targetN) || targetN <= 0) return setError(t("common.positive"));
     const payload = {
       name: name.trim(),
       target: targetN,
-      saved: Math.max(0, savedN),
-      monthly: Math.max(0, monthlyN),
+      saved: Math.max(0, Number(saved.replace(",", ".")) || 0),
+      monthly: Math.max(0, Number(monthly.replace(",", ".")) || 0),
+      type: kind,
+      targetDate: targetDate || undefined,
       color,
       icon,
     };
@@ -261,36 +290,81 @@ export default function GoalsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-5">
       <PageHeader
         title={t("goals.title")}
         subtitle={t("goals.subtitle")}
         actions={
-          <Button onClick={() => openDialog(null)} className="gap-2">
+          <Button onClick={() => openDialog(null)} className="h-11 gap-2">
             <Plus className="size-4" aria-hidden />
             {t("goals.add")}
           </Button>
         }
       />
 
+      {/* Budget ↔ goals: information, never a blocking error */}
+      {plan.hasSavingsCategory && goals.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border bg-card p-4"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <PiggyBank className="size-4" aria-hidden />
+              {t("goals.savingsPlan")}
+            </p>
+            <p className="text-lg font-bold tabular-nums">{fmt(plan.envelope)}</p>
+          </div>
+          <p className="mt-1 text-sm">
+            <span className="text-muted-foreground">
+              {t("goals.allocated")} : {fmt(plan.allocated)}
+            </span>
+            {" · "}
+            <span
+              className="font-medium"
+              style={{
+                color:
+                  plan.unallocated < -0.5
+                    ? COLOR.warning
+                    : Math.abs(plan.unallocated) < 0.5
+                      ? COLOR.positive
+                      : undefined,
+              }}
+            >
+              {Math.abs(plan.unallocated) < 0.5
+                ? t("goals.fullyAllocated")
+                : plan.unallocated > 0
+                  ? t("goals.unallocated", { amount: fmt(plan.unallocated) })
+                  : t("goals.overAllocated", { amount: fmt(-plan.unallocated) })}
+            </span>
+          </p>
+        </motion.div>
+      )}
+
       {goals.length === 0 ? (
-        <EmptyState
-          icon={Target}
-          title={t("goals.empty")}
-          ctaLabel={t("goals.add")}
-          onCta={() => openDialog(null)}
-        />
+        <div className="rounded-2xl border border-dashed px-6 py-12 text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Target className="size-6" aria-hidden />
+          </span>
+          <p className="mt-4 font-medium">{t("goals.emptyTitle")}</p>
+          <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+            {t("goals.emptyHint")}
+          </p>
+          <Button onClick={() => openDialog(null)} className="mt-5 h-11 gap-2">
+            <Plus className="size-4" aria-hidden />
+            {t("goals.add")}
+          </Button>
+        </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <AnimatePresence initial={false}>
             {goals.map((goal, i) => (
               <GoalCard
                 key={goal.id}
                 goal={goal}
                 index={i}
-                onEdit={() => {
-                  openDialog(goal);
-                }}
+                onEdit={() => openDialog(goal)}
                 onDelete={() => setDeleting(goal)}
                 onContribute={() => {
                   setContributing(goal);
@@ -302,66 +376,7 @@ export default function GoalsPage() {
         </div>
       )}
 
-      {/* Savings projection */}
-      {goals.length > 0 && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="grid content-start gap-3">
-            <MiniStat
-              index={0}
-              label={t("goals.totalSaved")}
-              value={fmt(totalSaved)}
-              icon={PiggyBank}
-            />
-            <MiniStat
-              index={1}
-              label={t("goals.monthlyPlanned")}
-              value={fmt(monthlyPlanned)}
-              hint={t("common.perMonth")}
-              icon={TrendingUp}
-            />
-          </div>
-          <ChartCard title={t("goals.projection")} className="lg:col-span-2">
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={projectionData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="var(--border)"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={AXIS_TICK}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={AXIS_TICK}
-                    tickLine={false}
-                    axisLine={false}
-                    width={54}
-                    tickFormatter={(v: number) => fmt(v)}
-                  />
-                  <Tooltip
-                    contentStyle={CHART_TOOLTIP_STYLE}
-                    formatter={(value) => [fmt(Number(value ?? 0)), t("dash.savings")]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="saved"
-                    stroke={COLOR.positive}
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-        </div>
-      )}
-
-      {/* Add / edit goal */}
+      {/* Create / edit — three fields, then everything else on demand */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
@@ -380,13 +395,16 @@ export default function GoalsPage() {
                 id="goal-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex : Épargner 5000€, Acheter une voiture…"
+                placeholder="Acheter une maison, Fonds d'urgence…"
+                className="h-11"
                 autoFocus
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="goal-target">{t("goals.target")}</Label>
+                <Label htmlFor="goal-target">
+                  {kind === "debt" ? t("goals.debtTarget") : t("goals.target")}
+                </Label>
                 <Input
                   id="goal-target"
                   type="number"
@@ -394,48 +412,117 @@ export default function GoalsPage() {
                   min="0"
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
-                  placeholder="5000"
+                  placeholder="100000"
+                  className="h-11"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="goal-saved">{t("goals.saved")}</Label>
+                <Label htmlFor="goal-monthly">{t("goals.monthly")}</Label>
                 <Input
-                  id="goal-saved"
+                  id="goal-monthly"
                   type="number"
                   inputMode="decimal"
                   min="0"
-                  value={saved}
-                  onChange={(e) => setSaved(e.target.value)}
+                  value={monthly}
+                  onChange={(e) => setMonthly(e.target.value)}
+                  placeholder="1000"
+                  className="h-11"
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="goal-monthly">{t("goals.monthly")}</Label>
-              <Input
-                id="goal-monthly"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={monthly}
-                onChange={(e) => setMonthly(e.target.value)}
-                placeholder="300"
-              />
+
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowMore((v) => !v)}
+                aria-expanded={showMore}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ChevronDown
+                  className={cn("size-3.5 transition-transform", showMore && "rotate-180")}
+                  aria-hidden
+                />
+                {t("goals.moreOptions")}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {showMore && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid gap-3 pt-3">
+                      <div className="grid gap-2">
+                        <Label>{t("goals.kind")}</Label>
+                        <div className="grid grid-cols-2 gap-2" role="radiogroup">
+                          {(["saving", "debt"] as const).map((k) => (
+                            <button
+                              key={k}
+                              type="button"
+                              role="radio"
+                              aria-checked={kind === k}
+                              onClick={() => setKind(k)}
+                              className={cn(
+                                "flex h-11 items-center justify-center gap-2 rounded-lg border-2 text-sm font-medium transition-colors",
+                                kind === k
+                                  ? "border-primary bg-primary/5 text-primary"
+                                  : "border-border text-muted-foreground"
+                              )}
+                            >
+                              {k === "saving" ? (
+                                <PiggyBank className="size-4" aria-hidden />
+                              ) : (
+                                <CreditCard className="size-4" aria-hidden />
+                              )}
+                              {k === "saving" ? t("goals.saving") : t("goals.debt")}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="goal-saved">
+                          {kind === "debt" ? t("goals.debtSaved") : t("goals.saved")}
+                        </Label>
+                        <Input
+                          id="goal-saved"
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          value={saved}
+                          onChange={(e) => setSaved(e.target.value)}
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="goal-date">{t("goals.targetDate")}</Label>
+                        <Input
+                          id="goal-date"
+                          type="date"
+                          value={targetDate}
+                          onChange={(e) => setTargetDate(e.target.value)}
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>{t("common.color")}</Label>
+                        <ColorPicker value={color} onChange={setColor} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>{t("common.icon")}</Label>
+                        <IconPicker value={icon} onChange={setIcon} color={color} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <div className="grid gap-2">
-              <Label>{t("common.color")}</Label>
-              <ColorPicker value={color} onChange={setColor} />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t("common.icon")}</Label>
-              <IconPicker value={icon} onChange={setIcon} color={color} />
-            </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 {t("common.cancel")}
               </Button>
               <Button type="submit">
@@ -446,7 +533,7 @@ export default function GoalsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Contribution dialog */}
+      {/* Custom contribution */}
       <Dialog
         open={contributing !== null}
         onOpenChange={(open) => !open && setContributing(null)}
@@ -465,7 +552,17 @@ export default function GoalsPage() {
               const amount = Number(contribution.replace(",", "."));
               if (contributing && amount > 0) {
                 contributeToGoal(contributing.id, amount);
-                toast.success(t("toast.saved"));
+                const after = Math.min(
+                  contributing.target,
+                  contributing.saved + amount
+                );
+                const pct =
+                  contributing.target > 0
+                    ? Math.round((after / contributing.target) * 100)
+                    : 0;
+                toast.success(`${contributing.name} · ${fmtAuto(after)}`, {
+                  description: `🎯 ${pct}%`,
+                });
                 setContributing(null);
               }
             }}
@@ -481,15 +578,12 @@ export default function GoalsPage() {
                 value={contribution}
                 onChange={(e) => setContribution(e.target.value)}
                 placeholder="100"
+                className="h-11"
                 autoFocus
               />
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setContributing(null)}
-              >
+              <Button type="button" variant="outline" onClick={() => setContributing(null)}>
                 {t("common.cancel")}
               </Button>
               <Button type="submit">{t("common.add")}</Button>
