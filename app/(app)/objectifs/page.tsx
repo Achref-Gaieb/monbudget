@@ -3,13 +3,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarClock,
-  Lock,
   Pencil,
   PiggyBank,
   Plus,
   Target,
   Trash2,
-  Trophy,
   TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -33,7 +31,7 @@ import { IconPicker } from "@/components/icon-picker";
 import { MiniStat } from "@/components/mini-stat";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -43,14 +41,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { computeAchievements } from "@/lib/achievements";
 import { localeOf } from "@/lib/format";
 import { PALETTE } from "@/lib/presets";
 import { COLOR, softBg } from "@/lib/tokens";
 import { useBudgetStore } from "@/lib/store";
 import type { Goal } from "@/lib/types";
 import { useI18n } from "@/lib/use-i18n";
-import { cn } from "@/lib/utils";
 
 function GoalCard({
   goal,
@@ -189,8 +185,6 @@ function GoalCard({
 export default function GoalsPage() {
   const { t, fmt, language } = useI18n();
   const goals = useBudgetStore((s) => s.goals);
-  const months = useBudgetStore((s) => s.months);
-  const currentMonthKey = useBudgetStore((s) => s.currentMonth);
   const addGoal = useBudgetStore((s) => s.addGoal);
   const updateGoal = useBudgetStore((s) => s.updateGoal);
   const removeGoal = useBudgetStore((s) => s.removeGoal);
@@ -223,11 +217,6 @@ export default function GoalsPage() {
     setDialogOpen(true);
   };
 
-  const achievements = useMemo(
-    () => computeAchievements(months, currentMonthKey, goals),
-    [months, currentMonthKey, goals]
-  );
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
   const totalSaved = goals.reduce((s, g) => s + g.saved, 0);
   const monthlyPlanned = goals.reduce(
     (s, g) => s + (g.saved >= g.target ? 0 : g.monthly),
@@ -371,79 +360,6 @@ export default function GoalsPage() {
           </ChartCard>
         </div>
       )}
-
-      {/* Achievements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Trophy className="size-4 text-premium" aria-hidden />
-            {t("ach.title")}
-            <span className="ml-auto text-xs font-normal text-muted-foreground">
-              {t("ach.unlocked", { n: unlockedCount, total: achievements.length })}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {achievements.map((ach, i) => (
-              <motion.div
-                key={ach.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className={cn(
-                  "rounded-xl border p-3.5",
-                  ach.unlocked
-                    ? "border-premium/30 bg-premium/5"
-                    : "opacity-70"
-                )}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                      ach.unlocked
-                        ? "bg-premium/15 text-premium"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {ach.unlocked ? (
-                      <AppIcon name={ach.icon} className="size-4.5" />
-                    ) : (
-                      <Lock className="size-4" aria-hidden />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">
-                      {t(ach.titleKey)}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {t(ach.descKey)}
-                    </p>
-                  </div>
-                </div>
-                {!ach.unlocked && ach.progress > 0 && (
-                  <div
-                    className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted"
-                    role="progressbar"
-                    aria-valuenow={Math.round(ach.progress * 100)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={t(ach.titleKey)}
-                  >
-                    <motion.div
-                      className="h-full rounded-full bg-premium/60"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${ach.progress * 100}%` }}
-                      transition={{ duration: 0.6 }}
-                    />
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Add / edit goal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

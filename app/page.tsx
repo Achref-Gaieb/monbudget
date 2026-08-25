@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, PiggyBank } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
   QuickBudget,
   QuickBudgetSkeleton,
@@ -15,6 +16,14 @@ import { buildDemoData } from "@/lib/demo";
 import type { TranslationKey } from "@/lib/i18n";
 import { useBudgetStore } from "@/lib/store";
 import { useI18n } from "@/lib/use-i18n";
+
+/**
+ * Sends people who already have a budget straight to their dashboard, before
+ * the marketing page paints. Running as an inline script rather than an effect
+ * is what removes the flash — and with it, a click paid on every daily visit.
+ * The effect below covers client-side navigations, where this never runs.
+ */
+const skipLandingScript = `(function(){try{var s=JSON.parse(localStorage.getItem('budget-app-v1')||'{}');if(s.state&&s.state.onboarded){location.replace('/dashboard');}}catch(e){}})();`;
 
 const NAV: { href: string; key: TranslationKey }[] = [
   { href: "/dashboard", key: "home.navDashboard" },
@@ -32,6 +41,12 @@ export default function HomePage() {
   const importData = useBudgetStore((s) => s.importData);
   const settings = useBudgetStore((s) => s.settings);
 
+  // Covers arrivals through client-side navigation, where the inline
+  // script above does not run.
+  useEffect(() => {
+    if (hasHydrated && onboarded) router.replace("/dashboard");
+  }, [hasHydrated, onboarded, router]);
+
   const loadDemo = () => {
     importData(buildDemoData(settings));
     router.push("/dashboard");
@@ -39,6 +54,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen w-full bg-background">
+      <script dangerouslySetInnerHTML={{ __html: skipLandingScript }} />
       {/* Header */}
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">

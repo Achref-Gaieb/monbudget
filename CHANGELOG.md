@@ -9,9 +9,43 @@ et le projet respecte le [versionnage sémantique](https://semver.org/lang/fr/) 
 - **MINOR** (`v1.1.0`) — nouvelle fonctionnalité rétrocompatible
 - **PATCH** (`v1.0.1`) — correction de bug rétrocompatible
 
-## [Non publié]
+## [2.0.0] — 2026-08-25
 
-Voir la [roadmap](README.md#roadmap).
+Refonte de l'expérience autour de l'usage quotidien. Priorité donnée au
+parcours et à la clarté plutôt qu'au nombre de fonctionnalités : la V2
+retire plus qu'elle n'ajoute.
+
+### Ajouté
+
+- **Ajout rapide d'une dépense** — bouton flottant présent sur tous les écrans, puis `montant → catégorie → Ajouter`. La date est aujourd'hui, la couleur vient de la catégorie, le nom est facultatif. Nom, date, note et récurrence sont repliés derrière « Plus d'options »
+- **Confirmation utile** après un ajout : « Dépense ajoutée · 8,50 € — Il vous reste 99 € sur Charges ce mois-ci »
+- **Barre d'onglets en bas sur mobile** (5 destinations, zones tactiles de 56 px), en remplacement du menu hamburger
+- **Page Analyse** (`/analyse`) regroupant score, conseils, prévisions, graphiques et heatmap
+- **Répartition en euros** : on saisit « 400 € pour les Plaisirs », le pourcentage est déduit. Les écarts sont annoncés en euros — « Il vous reste 320 € à répartir »
+- **Transactions groupées par jour**, avec un total par journée et « Aujourd'hui » / « Hier » en clair
+- **États vides utiles** : « Votre mois commence ici » plutôt que « Aucune donnée »
+- **Retour positif** : « ✓ Vous êtes dans vos objectifs » quand tout va bien
+
+### Modifié
+
+- **Accueil réduit à l'essentiel** : de 63 à 14 chiffres, de 3,1 à 1,2 écran de défilement, 0 graphique. Il répond à quatre questions — gagné, dépensé, restant, réparti comment
+- **Navigation ramenée de 8 à 5 entrées** ; revenus, simulateur et historique sont atteints depuis l'écran auquel ils appartiennent
+- **Onboarding en une seule question** — « Combien gagnez-vous par mois ? », 50/30/20 appliqué par défaut. Sources multiples et autres répartitions restent accessibles
+- Un utilisateur ayant déjà un budget est **redirigé vers son dashboard** dès l'ouverture du site, sans passer par la page marketing
+- Les alertes sont limitées à deux au lieu d'une par catégorie
+- Les montants n'affichent des centimes que lorsqu'ils en ont : `8,50 €` mais `1 665 €`
+- Les filtres de Transactions sont repliés derrière un bouton
+
+### Retiré
+
+- **Verrouillage Premium** : tout est gratuit. Il dégradait l'expérience de tous les utilisateurs — panneaux floutés, historique tronqué — pour un modèle économique qui n'existe pas encore. Les feature flags restent en place, prêts à être réactivés
+- **Succès et badges** de la page Objectifs, contraires à l'intention de ne pas transformer les finances personnelles en jeu
+- **Assistant de création `/creer`**, devenu un second chemin vers le même résultat ; l'URL redirige vers l'accueil
+
+### Corrigé
+
+- Une dépense de 8,50 € était confirmée comme « 9 € » : le formateur arrondissait
+- Le message de répartition était technique ; il indique désormais ce qu'il reste à répartir, en euros
 
 ## [1.0.0] — 2026-08-02
 
@@ -46,5 +80,5 @@ Première version publique.
 
 - Les compteurs animés pouvaient rester figés sur une valeur périmée : écrire `textContent` dans un nœud dont React gérait les enfants détachait le nœud texte suivi par React. Le composant possède désormais son contenu et se stabilise même lorsque les animations sont suspendues (onglet en arrière-plan).
 
-[Non publié]: https://github.com/Achref-Gaieb/monbudget/compare/v1.0.0...HEAD
+[2.0.0]: https://github.com/Achref-Gaieb/monbudget/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Achref-Gaieb/monbudget/releases/tag/v1.0.0

@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   Check,
-  Crown,
   Download,
   FileSpreadsheet,
   FileText,
@@ -23,8 +22,6 @@ import { AppIcon } from "@/components/app-icon";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { IconPicker } from "@/components/icon-picker";
 import { PageHeader } from "@/components/page-header";
-import { PremiumBadge, PremiumGate } from "@/components/premium";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,7 +46,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { buildDemoData } from "@/lib/demo";
 import { exportCSV, exportExcel, exportJSON, exportPDF, parseImportedJSON } from "@/lib/export";
 import { useFeature } from "@/lib/features";
@@ -66,8 +62,6 @@ export default function SettingsPage() {
   const updateSettings = useBudgetStore((s) => s.updateSettings);
   const importData = useBudgetStore((s) => s.importData);
   const resetAll = useBudgetStore((s) => s.resetAll);
-  const plan = useBudgetStore((s) => s.plan);
-  const setPlan = useBudgetStore((s) => s.setPlan);
   const profiles = useBudgetStore((s) => s.profiles);
   const activeProfileId = useBudgetStore((s) => s.activeProfileId);
   const createProfile = useBudgetStore((s) => s.createProfile);
@@ -130,50 +124,12 @@ export default function SettingsPage() {
       <PageHeader title={t("settings.title")} subtitle={t("settings.subtitle")} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Plan */}
-        <Card className="lg:col-span-2">
-          <CardContent className="flex flex-wrap items-center gap-4">
-            <span
-              className={cn(
-                "flex size-11 shrink-0 items-center justify-center rounded-xl",
-                plan === "premium"
-                  ? "bg-premium/15 text-premium"
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              <Crown className="size-5" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-2 font-semibold">
-                {t("premium.plan")}
-                <Badge variant={plan === "premium" ? "default" : "secondary"}>
-                  {plan === "premium" ? t("premium.premiumName") : t("premium.free")}
-                </Badge>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {plan === "premium" ? t("premium.demoHint") : t("premium.desc")}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="plan-switch" className="text-sm">
-                {t("premium.enable")}
-              </Label>
-              <Switch
-                id="plan-switch"
-                checked={plan === "premium"}
-                onCheckedChange={(v) => setPlan(v ? "premium" : "free")}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Budget profiles */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2 text-base">
               <Users className="size-4" aria-hidden />
               {t("profiles.title")}
-              {!canMultiProfile && <PremiumBadge />}
               <Button size="sm" className="ml-auto gap-2" onClick={openProfileDialog}>
                 <Plus className="size-3.5" aria-hidden />
                 {t("profiles.new")}
@@ -363,15 +319,11 @@ export default function SettingsPage() {
         {/* Data */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              {t("settings.data")}
-              <PremiumBadge />
-            </CardTitle>
+            <CardTitle className="text-base">{t("settings.data")}</CardTitle>
             <CardDescription>{t("settings.export")}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <PremiumGate feature="exports">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <Button
                   variant="outline"
                   className="gap-2"
@@ -407,8 +359,7 @@ export default function SettingsPage() {
                   <FileSpreadsheet className="size-4 text-positive" aria-hidden />
                   {t("settings.exportExcel")}
                 </Button>
-              </div>
-            </PremiumGate>
+            </div>
 
             <Button
               variant="outline"

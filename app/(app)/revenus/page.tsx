@@ -46,7 +46,7 @@ export default function IncomesPage() {
         icon={Wallet}
         title={t("dash.noData")}
         ctaLabel={t("dash.startBudget")}
-        ctaHref="/creer"
+        ctaHref="/"
       />
     );
   }

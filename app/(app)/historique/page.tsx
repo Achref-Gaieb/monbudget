@@ -1,10 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Crown, History } from "lucide-react";
+import { ArrowRight, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import {
   Bar,
   BarChart,
@@ -35,7 +34,6 @@ export default function HistoryPage() {
   const { t, fmt, fmtMonth } = useI18n();
   const months = useBudgetStore((s) => s.months);
   const setCurrentMonth = useBudgetStore((s) => s.setCurrentMonth);
-  const setPlan = useBudgetStore((s) => s.setPlan);
   const unlimitedHistory = useFeature("unlimitedHistory");
 
   const allPoints = useMemo(() => evolutionData(months), [months]);
@@ -44,7 +42,6 @@ export default function HistoryPage() {
       unlimitedHistory ? allPoints : allPoints.slice(-FREE_HISTORY_MONTHS),
     [allPoints, unlimitedHistory]
   );
-  const truncated = allPoints.length - points.length;
   const sortedDesc = useMemo(() => [...points].reverse(), [points]);
   const realCurrent = monthKey();
 
@@ -73,7 +70,7 @@ export default function HistoryPage() {
         icon={History}
         title={t("dash.noData")}
         ctaLabel={t("dash.startBudget")}
-        ctaHref="/creer"
+        ctaHref="/"
       />
     );
   }
@@ -86,27 +83,6 @@ export default function HistoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("hist.title")} subtitle={t("hist.subtitle")} />
-
-      {truncated > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-premium/30 bg-premium/10 px-4 py-3 text-sm">
-          <Crown className="size-4 shrink-0 text-premium" aria-hidden />
-          <span className="flex-1">
-            {t("premium.historyLimit", { n: FREE_HISTORY_MONTHS })}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              setPlan("premium");
-              toast.success(t("premium.premiumName"));
-            }}
-          >
-            <Crown className="size-3.5 text-premium" aria-hidden />
-            {t("premium.enable")}
-          </Button>
-        </div>
-      )}
 
       <ChartCard title={t("hist.evolution")}>
         <EvolutionLine points={points} />

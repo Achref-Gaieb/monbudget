@@ -195,11 +195,12 @@ Le code est organisé pour absorber les étapes suivantes sans réécriture :
 ## Roadmap
 
 - [x] **v1.0.0** — budget 50/30/20 personnalisable, dashboard, prévisions, insights, score, simulateur, profils, objectifs, exports, thèmes clair/sombre
-- [ ] **v1.1.0** — authentification utilisateur (comptes et sessions)
-- [ ] **v1.2.0** — base de données cloud et sauvegarde distante
-- [ ] **v1.3.0** — synchronisation multi-appareils
-- [ ] **v1.4.0** — abonnements Premium (paiement et facturation)
-- [ ] **v2.0.0** — assistant IA : « Où part mon argent ? », « Comment économiser 300 € ? »
+- [x] **v2.0.0** — refonte de l'expérience quotidienne : ajout d'une dépense en deux gestes, accueil compris en 3 secondes, navigation à 5 entrées, répartition en euros, onboarding en une question
+- [ ] **v2.1.0** — authentification utilisateur (comptes et sessions)
+- [ ] **v2.2.0** — base de données cloud et sauvegarde distante
+- [ ] **v2.3.0** — synchronisation multi-appareils
+- [ ] **v2.4.0** — abonnements Premium (paiement et facturation)
+- [ ] **v3.0.0** — assistant IA : « Où part mon argent ? », « Comment économiser 300 € ? »
 
 Le détail des versions publiées est dans [CHANGELOG.md](CHANGELOG.md).
 

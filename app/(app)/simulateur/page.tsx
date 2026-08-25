@@ -106,7 +106,7 @@ export default function SimulatorPage() {
         icon={FlaskConical}
         title={t("dash.noData")}
         ctaLabel={t("dash.startBudget")}
-        ctaHref="/creer"
+        ctaHref="/"
       />
     );
   }

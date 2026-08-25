@@ -5,14 +5,18 @@ import { AppIcon } from "./app-icon";
 import { usageColor, type CategoryStat } from "@/lib/calculations";
 import { COLOR, softBg } from "@/lib/tokens";
 import { useI18n } from "@/lib/use-i18n";
+import { cn } from "@/lib/utils";
 
 /** Animated progress bar for one category: "650€ sur 1000€ · 65%". */
 export function CategoryProgress({
   stat,
   index = 0,
+  compact = false,
 }: {
   stat: CategoryStat;
   index?: number;
+  /** Hides the forecast line — used where the breakdown must stay scannable. */
+  compact?: boolean;
 }) {
   const { fmt, t } = useI18n();
   const { category, allowed, spent, usage } = stat;
@@ -55,7 +59,12 @@ export function CategoryProgress({
           transition={{ duration: 0.8, delay: index * 0.08, ease: "easeOut" }}
         />
       </div>
-      <p className="mt-1 flex justify-between text-xs text-muted-foreground">
+      <p
+        className={cn(
+          "mt-1 flex justify-between text-xs text-muted-foreground",
+          compact && "hidden"
+        )}
+      >
         <span>
           {t("cats.forecast")} : <span className="tabular-nums">{fmt(stat.forecast)}</span>
         </span>

@@ -16,23 +16,24 @@ export type FeatureId =
 
 /**
  * Single source of truth for the Free / Premium split.
- * Flip a value here to move a feature between plans — nothing else changes.
  *
- * Free keeps: unlimited categories, overspend alerts, scenario simulator,
- * essential charts, 1 profile, 3-month history, JSON backup (data ownership).
+ * Everything is free today: there is nothing to sell yet, and gating degraded
+ * the experience for every single user — blurred panels, locked history — to
+ * rehearse a business model that does not exist. The plumbing stays, so the
+ * day there is something to sell, flipping a value here is the whole change.
  */
 export const FEATURE_MIN_PLAN: Record<FeatureId, Plan> = {
-  budgetScore: "premium",
-  smartInsights: "premium",
-  multipleProfiles: "premium",
-  unlimitedHistory: "premium",
-  exports: "premium",
-  premiumThemes: "premium",
-  cloudSync: "premium", // future
-  aiAssistant: "premium", // future
+  budgetScore: "free",
+  smartInsights: "free",
+  multipleProfiles: "free",
+  unlimitedHistory: "free",
+  exports: "free",
+  premiumThemes: "free",
+  cloudSync: "free", // future
+  aiAssistant: "free", // future
 };
 
-/** Months of history visible on the free plan. */
+/** Months of history visible when `unlimitedHistory` is gated. */
 export const FREE_HISTORY_MONTHS = 3;
 
 export function isFeatureEnabled(plan: Plan, feature: FeatureId): boolean {

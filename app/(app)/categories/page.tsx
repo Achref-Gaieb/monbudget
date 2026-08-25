@@ -23,7 +23,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { categoryStats, usageColor, type CategoryStat } from "@/lib/calculations";
+import {
+  categoryStats,
+  totalIncome,
+  usageColor,
+  type CategoryStat,
+} from "@/lib/calculations";
 import { METHOD_PRESETS, PALETTE } from "@/lib/presets";
 import { COLOR, softBg } from "@/lib/tokens";
 import { useBudgetStore, useCurrentMonth } from "@/lib/store";
@@ -33,10 +38,12 @@ import { cn } from "@/lib/utils";
 
 function CategoryRow({
   stat,
+  income,
   onEdit,
   onDelete,
 }: {
   stat: CategoryStat;
+  income: number;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -101,22 +108,52 @@ function CategoryRow({
                 {t("cats.expensesCount", { n: expenseCount })}
               </p>
             </div>
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={category.percentage}
-                onChange={(e) =>
-                  updateCategory(category.id, {
-                    percentage: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                  })
-                }
-                className="w-16 text-right"
-                aria-label={`${category.name} — ${t("cats.percentage")}`}
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-            </div>
+            {/* People budget in euros, not in percentages — so that is what
+                they type. The share is derived and shown as a hint. */}
+            {income > 0 ? (
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step={10}
+                    value={Math.round(allowed)}
+                    onChange={(e) => {
+                      const amount = Math.max(0, Number(e.target.value) || 0);
+                      updateCategory(category.id, {
+                        percentage: Math.min(100, (amount / income) * 100),
+                      });
+                    }}
+                    className="h-11 w-28 pr-7 text-right tabular-nums"
+                    aria-label={`${category.name} — ${t("cats.budget")}`}
+                  />
+                  <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-muted-foreground">
+                    €
+                  </span>
+                </div>
+                <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">
+                  {Math.round(category.percentage)}%
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={Math.round(category.percentage)}
+                  onChange={(e) =>
+                    updateCategory(category.id, {
+                      percentage: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                    })
+                  }
+                  className="h-11 w-16 text-right"
+                  aria-label={`${category.name} — ${t("cats.percentage")}`}
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
             <div className="flex gap-1">
               <Button
                 variant="ghost"
@@ -185,7 +222,7 @@ function CategoryRow({
 }
 
 export default function CategoriesPage() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const month = useCurrentMonth();
   const setMethod = useBudgetStore((s) => s.setMethod);
   const addCategory = useBudgetStore((s) => s.addCategory);
@@ -221,15 +258,18 @@ export default function CategoriesPage() {
         icon={FolderKanban}
         title={t("dash.noData")}
         ctaLabel={t("dash.startBudget")}
-        ctaHref="/creer"
+        ctaHref="/"
       />
     );
   }
 
   const stats = categoryStats(month);
   const statsById = new Map(stats.map((s) => [s.category.id, s]));
+  const income = totalIncome(month);
   const pctTotal = month.categories.reduce((s, c) => s + c.percentage, 0);
-  const pctValid = pctTotal === 100;
+  // Tolerant of the rounding introduced by entering euros rather than shares.
+  const pctValid = Math.abs(pctTotal - 100) < 0.5;
+  const unallocated = income * ((100 - pctTotal) / 100);
 
   const submit = () => {
     const pct = Number(percentage);
@@ -328,12 +368,19 @@ export default function CategoriesPage() {
               {pctValid ? (
                 <>
                   <Check className="size-4" aria-hidden />
-                  {t("cats.pctOk")} — 100%
+                  {t("cats.allAllocated")}
                 </>
               ) : (
                 <>
                   <X className="size-4" aria-hidden />
-                  {t("cats.pctError", { pct: pctTotal })}
+                  {/* Euros are concrete; a percentage gap is not. */}
+                  {income > 0
+                    ? unallocated > 0
+                      ? t("cats.leftToAllocate", { amount: fmt(unallocated) })
+                      : t("cats.overAllocated", { amount: fmt(-unallocated) })
+                    : pctTotal > 100
+                      ? t("cats.pctOver", { diff: Math.round(pctTotal - 100) })
+                      : t("cats.pctUnder", { diff: Math.round(100 - pctTotal) })}
                 </>
               )}
             </p>
@@ -356,6 +403,7 @@ export default function CategoriesPage() {
             <CategoryRow
               key={category.id}
               stat={stat}
+              income={income}
               onEdit={() => openDialog(category)}
               onDelete={() => setDeleting(category)}
             />

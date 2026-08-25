@@ -34,6 +34,10 @@ const fr = {
   "common.confirmDelete": "Confirmer la suppression ?",
   "common.required": "Ce champ est requis",
   "common.positive": "Le montant doit être supérieur à 0",
+  "common.today": "Aujourd'hui",
+  "common.yesterday": "Hier",
+  "common.filters": "Filtres",
+  "common.reset": "Tout effacer",
 
   // Landing
   "landing.badge": "Gratuit · Sans inscription · Données 100% locales",
@@ -157,6 +161,11 @@ const fr = {
   "cats.totalPct": "Total des pourcentages",
   "cats.pctOk": "Répartition valide",
   "cats.pctError": "Le total doit être 100% (actuellement {pct}%)",
+  "cats.pctOver": "Votre répartition dépasse 100 %. Il y a {diff} % de trop à répartir.",
+  "cats.pctUnder": "Il vous reste {diff} % à répartir.",
+  "cats.allAllocated": "Tout votre budget est réparti",
+  "cats.leftToAllocate": "Il vous reste {amount} à répartir.",
+  "cats.overAllocated": "Vous répartissez {amount} de plus que vos revenus.",
   "cats.isSavings": "Compte comme de l'épargne",
   "cats.percentage": "Pourcentage",
   "cats.dragHint": "Glissez-déposez pour réorganiser",
@@ -257,6 +266,10 @@ const fr = {
 
   // Navigation (new)
   "nav.simulator": "Simulateur",
+  "nav.home": "Accueil",
+  "nav.transactions": "Transactions",
+  "nav.allocation": "Répartition",
+  "nav.analysis": "Analyse",
 
   // Category stats
   "cats.budget": "Budget",
@@ -404,6 +417,11 @@ const fr = {
   "home.step1Hint": "Ajoutez vos sources de revenus mensuels.",
   "home.step2": "Votre répartition",
   "home.step2Hint": "Choisissez la méthode qui vous correspond.",
+  "home.oneQuestion": "Combien gagnez-vous par mois ?",
+  "home.severalSources": "J'ai plusieurs sources de revenus",
+  "home.yourSplit": "Votre répartition",
+  "home.splitHint": "La méthode 50/30/20 est appliquée par défaut. Modifiable à tout moment.",
+  "home.otherSplit": "Choisir une autre répartition",
   "home.step3": "Votre budget",
   "home.step3Hint": "Aperçu instantané, mis à jour en direct.",
   "home.incomeName": "Nom du revenu",
@@ -426,6 +444,33 @@ const fr = {
   "home.advancedTools": "Besoin d'aller plus loin ? Toutes les analyses vous attendent dans l'application.",
   "theme.toLight": "Passer en mode clair",
   "theme.toDark": "Passer en mode sombre",
+
+  // Quick expense — the daily gesture
+  "quick.title": "Nouvelle dépense",
+  "quick.where": "Où ?",
+  "quick.more": "Plus d'options",
+  "quick.add": "Ajouter",
+  "quick.added": "Dépense ajoutée",
+  "quick.nameOptional": "Nom (facultatif)",
+  "quick.remaining": "Il vous reste {amount} sur {name} ce mois-ci.",
+  "quick.over": "Vous avez dépassé {name} de {amount}.",
+  "quick.fab": "Ajouter une dépense",
+
+  // Home screen — plain language, no jargon
+  "dash.whereMoneyGoes": "Où part votre argent",
+  "dash.seeAnalysis": "Analyse détaillée",
+  "dash.onTrack": "Vous êtes dans vos objectifs",
+  "dash.monthStartsHere": "Votre mois commence ici",
+  "dash.monthStartsHereHint":
+    "Ajoutez votre première dépense pour voir comment votre argent évolue.",
+  "analysis.title": "Analyse",
+  "analysis.subtitle": "Pour aller plus loin quand vous en avez besoin",
+  "analysis.thisMonth": "Ce mois-ci",
+  "analysis.trends": "Tendances",
+  "analysis.tools": "Outils",
+  "analysis.simulator": "Tester une autre répartition",
+  "analysis.history": "Comparer mes mois",
+  "analysis.incomes": "Gérer mes revenus",
 };
 
 const en: Record<keyof typeof fr, string> = {
@@ -460,6 +505,10 @@ const en: Record<keyof typeof fr, string> = {
   "common.confirmDelete": "Confirm deletion?",
   "common.required": "This field is required",
   "common.positive": "Amount must be greater than 0",
+  "common.today": "Today",
+  "common.yesterday": "Yesterday",
+  "common.filters": "Filters",
+  "common.reset": "Clear all",
 
   "landing.badge": "Free · No sign-up · 100% local data",
   "landing.title": "Master your budget with the",
@@ -578,6 +627,11 @@ const en: Record<keyof typeof fr, string> = {
   "cats.totalPct": "Total percentage",
   "cats.pctOk": "Valid allocation",
   "cats.pctError": "Total must be 100% (currently {pct}%)",
+  "cats.pctOver": "Your allocation goes over 100%. There is {diff}% too much to share out.",
+  "cats.pctUnder": "You still have {diff}% left to share out.",
+  "cats.allAllocated": "Your whole budget is allocated",
+  "cats.leftToAllocate": "You still have {amount} to allocate.",
+  "cats.overAllocated": "You are allocating {amount} more than you earn.",
   "cats.isSavings": "Counts as savings",
   "cats.percentage": "Percentage",
   "cats.dragHint": "Drag & drop to reorder",
@@ -672,6 +726,10 @@ const en: Record<keyof typeof fr, string> = {
   "toast.categoryAdded": "Category added",
 
   "nav.simulator": "Simulator",
+  "nav.home": "Home",
+  "nav.transactions": "Transactions",
+  "nav.allocation": "Allocation",
+  "nav.analysis": "Analysis",
 
   "cats.budget": "Budget",
   "cats.spentShort": "Spent",
@@ -808,6 +866,11 @@ const en: Record<keyof typeof fr, string> = {
   "home.step1Hint": "Add your monthly income sources.",
   "home.step2": "Your split",
   "home.step2Hint": "Pick the method that fits you.",
+  "home.oneQuestion": "How much do you earn each month?",
+  "home.severalSources": "I have several income sources",
+  "home.yourSplit": "Your split",
+  "home.splitHint": "The 50/30/20 method is applied by default. Change it anytime.",
+  "home.otherSplit": "Choose another split",
   "home.step3": "Your budget",
   "home.step3Hint": "Instant preview, updated live.",
   "home.incomeName": "Income name",
@@ -830,6 +893,31 @@ const en: Record<keyof typeof fr, string> = {
   "home.advancedTools": "Want to go further? All the analytics are waiting inside the app.",
   "theme.toLight": "Switch to light mode",
   "theme.toDark": "Switch to dark mode",
+
+  "quick.title": "New expense",
+  "quick.where": "What for?",
+  "quick.more": "More options",
+  "quick.add": "Add",
+  "quick.added": "Expense added",
+  "quick.nameOptional": "Name (optional)",
+  "quick.remaining": "{amount} left on {name} this month.",
+  "quick.over": "You are {amount} over on {name}.",
+  "quick.fab": "Add an expense",
+
+  "dash.whereMoneyGoes": "Where your money goes",
+  "dash.seeAnalysis": "Detailed analysis",
+  "dash.onTrack": "You're on track",
+  "dash.monthStartsHere": "Your month starts here",
+  "dash.monthStartsHereHint":
+    "Add your first expense to see how your money evolves.",
+  "analysis.title": "Analysis",
+  "analysis.subtitle": "Go deeper whenever you need to",
+  "analysis.thisMonth": "This month",
+  "analysis.trends": "Trends",
+  "analysis.tools": "Tools",
+  "analysis.simulator": "Try another allocation",
+  "analysis.history": "Compare my months",
+  "analysis.incomes": "Manage my income",
 };
 
 export type TranslationKey = keyof typeof fr;

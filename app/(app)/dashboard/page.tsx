@@ -1,94 +1,40 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Activity,
-  Banknote,
-  CalendarDays,
-  CalendarRange,
-  Coins,
-  Flame,
-  Gauge,
-  LayoutDashboard,
-  PiggyBank,
-  Plus,
-  Receipt,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, LayoutDashboard, Plus, Receipt } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AlertsBanner } from "@/components/alerts-banner";
 import { AnimatedNumber } from "@/components/animated-number";
 import { CategoryProgress } from "@/components/category-progress";
-import { BudgetPie } from "@/components/charts/budget-pie";
-import { ChartCard } from "@/components/charts/chart-card";
-import { EvolutionLine } from "@/components/charts/evolution-line";
-import { SpendingHeatmap } from "@/components/charts/heatmap";
-import { IncomePie } from "@/components/charts/income-pie";
-import { PlannedVsSpent } from "@/components/charts/planned-vs-spent";
 import { EmptyState } from "@/components/empty-state";
-import { ExpenseDialog } from "@/components/expense-dialog";
-import { InsightsPanel } from "@/components/insights-panel";
-import { MiniStat } from "@/components/mini-stat";
-import { PageHeader } from "@/components/page-header";
-import { PremiumGate } from "@/components/premium";
-import { ScoreCard } from "@/components/score-card";
-import { StatCard } from "@/components/stat-card";
+import { QuickExpense } from "@/components/quick-expense";
 import { Button } from "@/components/ui/button";
 import {
   categoryStats,
-  computeForecast,
-  dailySpending,
-  evolutionData,
-  periodStats,
   totalIncome,
-  totalSavings,
   totalSpent,
 } from "@/lib/calculations";
-import { computeInsights } from "@/lib/insights";
-import { ACCENTS } from "@/lib/presets";
-import { computeScore } from "@/lib/score";
-import { COLOR, softBg } from "@/lib/tokens";
+import { COLOR } from "@/lib/tokens";
 import { useBudgetStore, useCurrentMonth } from "@/lib/store";
 import { useI18n } from "@/lib/use-i18n";
 
+/**
+ * The home screen answers four questions and stops there: what came in,
+ * what went out, what is left, and where it went. Everything else lives
+ * one tap away in /analyse.
+ */
 export default function DashboardPage() {
   const { t, fmt, fmtMonth } = useI18n();
   const month = useCurrentMonth();
-  const months = useBudgetStore((s) => s.months);
-  const currentMonthKey = useBudgetStore((s) => s.currentMonth);
-  const goals = useBudgetStore((s) => s.goals);
   const userName = useBudgetStore((s) => s.settings.userName);
-  const accent = useBudgetStore((s) => s.settings.accent);
   const [addOpen, setAddOpen] = useState(false);
 
   const stats = useMemo(() => categoryStats(month), [month]);
   const income = totalIncome(month);
   const spent = totalSpent(month);
-  const savings = totalSavings(month);
   const remaining = income - spent;
-  const usage = income > 0 ? (spent / income) * 100 : 0;
-  const forecast = useMemo(() => computeForecast(month), [month]);
-  const evolution = useMemo(() => evolutionData(months), [months]);
-  const daily = useMemo(() => dailySpending(month), [month]);
-  const period = useMemo(() => periodStats(month), [month]);
-  const score = useMemo(
-    () => computeScore(months, currentMonthKey, goals),
-    [months, currentMonthKey, goals]
-  );
-  const insights = useMemo(
-    () =>
-      computeInsights({
-        months,
-        currentKey: currentMonthKey,
-        formatAmount: (v) => fmt(v),
-      }),
-    [months, currentMonthKey, fmt]
-  );
-  const accentColor = ACCENTS.find((a) => a.id === accent)?.value ?? ACCENTS[0].value;
-  const forecastColor =
-    forecast.endBalance >= 0 ? COLOR.positive : COLOR.negative;
+  const usage = income > 0 ? Math.min(100, (spent / income) * 100) : 0;
 
   if (!month) {
     return (
@@ -96,227 +42,128 @@ export default function DashboardPage() {
         icon={LayoutDashboard}
         title={t("dash.noData")}
         ctaLabel={t("dash.startBudget")}
-        ctaHref="/creer"
+        ctaHref="/"
       />
     );
   }
 
-  const pct = (v: number) => `${Math.round(v)}%`;
+  const noExpensesYet = month.expenses.length === 0;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`${t("dash.greeting")}${userName ? ` ${userName}` : ""} 👋`}
-        subtitle={`${t("dash.overview")} — ${fmtMonth(month.month)}`}
-        actions={
-          <Button onClick={() => setAddOpen(true)} className="gap-2">
-            <Plus className="size-4" aria-hidden />
-            {t("dash.addExpense")}
-          </Button>
-        }
-      />
+    <div className="mx-auto w-full max-w-3xl space-y-7">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          {t("dash.greeting")}
+          {userName ? ` ${userName}` : ""}
+        </h1>
+        <p className="text-sm text-muted-foreground">{fmtMonth(month.month)}</p>
+      </div>
+
+      {/* Level 1 — the single number that matters */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="rounded-2xl border bg-card p-6 sm:p-7"
+        aria-labelledby="remaining-label"
+      >
+        <p id="remaining-label" className="text-sm text-muted-foreground">
+          {t("dash.remaining")}
+        </p>
+        <p
+          className="mt-1 text-4xl font-bold tracking-tight tabular-nums sm:text-5xl"
+          style={{ color: remaining < 0 ? COLOR.negative : undefined }}
+        >
+          <AnimatedNumber value={remaining} format={(v) => fmt(v)} />
+        </p>
+
+        <div
+          className="mt-5 h-2 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuenow={Math.round(usage)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t("dash.usage")}
+        >
+          <motion.div
+            className="h-full rounded-full"
+            style={{
+              backgroundColor: remaining < 0 ? COLOR.negative : COLOR.primary,
+            }}
+            initial={{ width: 0 }}
+            animate={{ width: `${usage}%` }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+          />
+        </div>
+
+        {/* Level 2 — the two figures that explain it */}
+        <div className="mt-4 flex items-baseline justify-between text-sm">
+          <span className="text-muted-foreground">
+            {t("dash.income")}{" "}
+            <span className="font-semibold text-foreground tabular-nums">
+              {fmt(income)}
+            </span>
+          </span>
+          <span className="text-muted-foreground">
+            {t("dash.spent")}{" "}
+            <span className="font-semibold text-foreground tabular-nums">
+              {fmt(spent)}
+            </span>
+          </span>
+        </div>
+      </motion.section>
 
       <AlertsBanner stats={stats} />
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          index={0}
-          label={t("dash.income")}
-          value={income}
-          format={(v) => fmt(v)}
-          icon={Wallet}
-          color={COLOR.positive}
-        />
-        <StatCard
-          index={1}
-          label={t("dash.spent")}
-          value={spent}
-          format={(v) => fmt(v)}
-          icon={Receipt}
-          color={COLOR.expense}
-        />
-        <StatCard
-          index={2}
-          label={t("dash.savings")}
-          value={savings}
-          format={(v) => fmt(v)}
-          icon={PiggyBank}
-          color={COLOR.needs}
-        />
-        <StatCard
-          index={3}
-          label={t("dash.remaining")}
-          value={remaining}
-          format={(v) => fmt(v)}
-          icon={Banknote}
-          color={COLOR.info}
-          negative={remaining < 0}
-        />
-        <StatCard
-          index={4}
-          label={t("dash.usage")}
-          value={usage}
-          format={pct}
-          icon={Gauge}
-          color={COLOR.warning}
-          negative={usage > 100}
-        />
-      </div>
+      {/* Level 2 — where the money went */}
+      <section aria-labelledby="breakdown-title">
+        <h2 id="breakdown-title" className="mb-4 text-sm font-semibold">
+          {t("dash.whereMoneyGoes")}
+        </h2>
 
-      {/* Forecast */}
-      {forecast.isCurrentMonth && income > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5"
-          style={{
-            background: `linear-gradient(120deg, ${softBg(forecastColor)}, transparent 60%)`,
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className="flex size-10 items-center justify-center rounded-xl"
-              style={{
-                backgroundColor: softBg(forecastColor),
-                color: forecastColor,
-              }}
-            >
-              {forecast.endBalance >= 0 ? (
-                <TrendingUp className="size-5" aria-hidden />
-              ) : (
-                <TrendingDown className="size-5" aria-hidden />
-              )}
-            </span>
-            <div>
-              <p className="text-sm font-semibold">{t("dash.forecast")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("dash.forecastPositive")}
-              </p>
-            </div>
+        {noExpensesYet ? (
+          <div className="rounded-2xl border border-dashed px-6 py-10 text-center">
+            <p className="font-medium">{t("dash.monthStartsHere")}</p>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+              {t("dash.monthStartsHereHint")}
+            </p>
+            <Button onClick={() => setAddOpen(true)} className="mt-5 h-11 gap-2">
+              <Plus className="size-4" aria-hidden />
+              {t("quick.fab")}
+            </Button>
           </div>
-          <div className="text-right">
-            <p
-              className="text-2xl font-bold tabular-nums"
-              style={{ color: forecastColor }}
-            >
-              <AnimatedNumber
-                value={forecast.endBalance}
-                format={(v) => `${v >= 0 ? "+" : ""}${fmt(v)}`}
-              />
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {t("dash.forecastSpend")} : {fmt(forecast.projectedSpend)}
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Period stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        <MiniStat
-          index={0}
-          label={t("dash.today")}
-          value={fmt(period.spentToday)}
-          icon={CalendarDays}
-        />
-        <MiniStat
-          index={1}
-          label={t("dash.thisWeek")}
-          value={fmt(period.spentThisWeek)}
-          icon={CalendarRange}
-        />
-        <MiniStat
-          index={2}
-          label={t("dash.dailyAvg")}
-          value={fmt(period.dailyAverage)}
-          hint={`${t("dash.weeklyAvg")} : ${fmt(period.weeklyAverage)}`}
-          icon={Activity}
-        />
-        <MiniStat
-          index={3}
-          label={t("dash.biggestExpense")}
-          value={period.biggestExpense ? fmt(period.biggestExpense.amount) : "—"}
-          hint={period.biggestExpense?.name}
-          icon={TrendingUp}
-        />
-        <MiniStat
-          index={4}
-          label={t("dash.topCategory")}
-          value={period.topCategory?.category.name ?? "—"}
-          hint={period.topCategory ? fmt(period.topCategory.spent) : undefined}
-          icon={Flame}
-        />
-        <MiniStat
-          index={5}
-          label={t("dash.disposable")}
-          value={fmt(period.disposable)}
-          hint={t("dash.disposableHint")}
-          icon={Coins}
-        />
-      </div>
-
-      {/* Budget score + smart insights */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <PremiumGate feature="budgetScore">
-          <ScoreCard score={score} />
-        </PremiumGate>
-        <PremiumGate feature="smartInsights" className="lg:col-span-2">
-          <InsightsPanel insights={insights} />
-        </PremiumGate>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <ChartCard title={t("dash.budgetSplit")}>
-          <BudgetPie stats={stats} totalIncome={income} />
-        </ChartCard>
-
-        <ChartCard title={t("dash.plannedVsSpent")} delay={0.05}>
-          <PlannedVsSpent stats={stats} />
-        </ChartCard>
-
-        <ChartCard title={t("dash.categoryProgress")} delay={0.1}>
-          {month.expenses.length === 0 && (
-            <p className="mb-3 text-sm text-muted-foreground">
-              {t("dash.noExpensesYet")}
-            </p>
-          )}
-          <div className="space-y-5">
+        ) : (
+          <div className="space-y-5 rounded-2xl border bg-card p-5 sm:p-6">
             {stats.map((s, i) => (
-              <CategoryProgress key={s.category.id} stat={s} index={i} />
+              <CategoryProgress key={s.category.id} stat={s} index={i} compact />
             ))}
           </div>
-        </ChartCard>
+        )}
+      </section>
 
-        <ChartCard
-          title={t("dash.monthlyEvolution")}
-          className="lg:col-span-2"
-          delay={0.05}
+      {/* Level 3 — the door to everything else */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href="/analyse" />}
+          className="h-11 gap-2"
         >
-          <EvolutionLine points={evolution} />
-        </ChartCard>
-
-        <ChartCard title={t("dash.incomeBreakdown")} delay={0.1}>
-          <IncomePie incomes={month.incomes} />
-        </ChartCard>
-
-        <ChartCard
-          title={t("dash.heatmap")}
-          description={t("dash.heatmapDesc")}
-          className="lg:col-span-2 xl:col-span-1"
-          delay={0.15}
+          {t("dash.seeAnalysis")}
+          <ArrowRight className="size-4" aria-hidden />
+        </Button>
+        <Button
+          variant="ghost"
+          nativeButton={false}
+          render={<Link href="/depenses" />}
+          className="h-11 gap-2"
         >
-          <SpendingHeatmap
-            month={month.month}
-            daily={daily}
-            accentColor={accentColor}
-          />
-        </ChartCard>
+          <Receipt className="size-4" aria-hidden />
+          {t("nav.transactions")}
+        </Button>
       </div>
 
-      <ExpenseDialog open={addOpen} onOpenChange={setAddOpen} />
+      <QuickExpense open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
